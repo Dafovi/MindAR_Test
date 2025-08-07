@@ -1,0 +1,154 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- A-Frame + MindAR -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <title>Test WebAR</title>
+  <style>
+    .ui { position: fixed; right: 12px; bottom: 12px; display: grid; gap: 8px; z-index: 9999; }
+    .ui button { padding: 10px 14px; font-size: 16px; }
+    .hidden { display: none; }
+    #unlock {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: rgba(0,0,0,.75); color: #fff; z-index: 10000;
+    }
+    #unlock button { padding: 12px 18px; font-size: 18px; }
+    #unlock.hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Overlay para habilitar audio -->
+  <div id="unlock">
+    <div>
+      <p>Toca para activar el audio</p>
+      <button id="btn-unlock">Activar audio</button>
+    </div>
+  </div>
+
+  <!-- Controles UI -->
+  <div id="ui" class="ui hidden">
+    <button id="btn-rotate">Girar modelo</button>
+    <button id="btn-audio">Play / Pausa</button>
+    <button id="btn-restart">Reiniciar audio</button>
+  </div>
+
+  <!-- Escena AR -->
+  <a-scene
+    mindar-image="imageTargetSrc: ./Targets/targets.mind;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+  >
+    <a-assets>
+      <a-asset-item id="m-0" src="./Assets/Models/Mario.glb"></a-asset-item>
+      <audio id="a-0" src="./Assets/Audio/Mario.mp3" preload="auto"></audio>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Target 0 -->
+    <a-entity id="t0" mindar-image-target="targetIndex: 0">
+      <a-gltf-model id="model-0"
+        src="#m-0"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.005 0.005 0.005"
+        animation-mixer
+      ></a-gltf-model>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const targets = {
+      0: {
+        entity: document.querySelector('#t0'),
+        model:  document.querySelector('#model-0'),
+        audio:  document.querySelector('#a-0')
+      }
+    };
+
+    const ui = document.querySelector('#ui');
+    const btnRotate = document.querySelector('#btn-rotate');
+    const btnAudio = document.querySelector('#btn-audio');
+    const btnRestart = document.querySelector('#btn-restart');
+
+    const unlock = document.querySelector('#unlock');
+    const btnUnlock = document.querySelector('#btn-unlock');
+
+    let current = null;
+    let audioUnlocked = false;
+
+    // Desbloquear audio con una interacción
+    btnUnlock.addEventListener('click', async () => {
+      try {
+        if (AFRAME && AFRAME.audioContext && AFRAME.audioContext.state === 'suspended') {
+          await AFRAME.audioContext.resume();
+        }
+      } catch {}
+      audioUnlocked = true;
+      unlock.classList.add('hidden');
+    });
+
+    // Eventos MindAR
+    Object.values(targets).forEach(({entity, model, audio}) => {
+      if (!entity) return;
+
+      entity.addEventListener('targetFound', async () => {
+        current = {entity, model, audio};
+        ui.classList.remove('hidden');
+
+        if (audioUnlocked && audio) {
+          try {
+            audio.currentTime = 0;
+            await audio.play();
+          } catch (e) {
+            console.warn('No se pudo iniciar audio automáticamente:', e);
+          }
+        }
+      });
+
+      entity.addEventListener('targetLost', () => {
+        if (current && current.entity === entity) {
+          if (audio && !audio.paused) audio.pause();
+          ui.classList.add('hidden');
+          current = null;
+        }
+      });
+    });
+
+    // Botón rotar
+    btnRotate.addEventListener('click', () => {
+      if (!current || !current.model) return;
+      current.model.object3D.rotation.y += (Math.PI / 12);
+    });
+
+    // Botón play/pausa
+    btnAudio.addEventListener('click', async () => {
+      if (!current) return;
+      const a = current.audio;
+      if (!a) return;
+      if (a.paused) {
+        try { await a.play(); } catch (e) {}
+      } else {
+        a.pause();
+      }
+    });
+
+    // Botón reiniciar
+    btnRestart.addEventListener('click', async () => {
+      if (!current) return;
+      const a = current.audio;
+      if (!a) return;
+      a.currentTime = 0;
+      try { await a.play(); } catch (e) {}
+    });
+  </script>
+</body>
+</html>
