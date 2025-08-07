@@ -8,6 +8,7 @@
   <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
   <title>Test WebAR</title>
   <style>
@@ -47,7 +48,7 @@
     renderer="colorManagement: true, physicallyCorrectLights"
   >
     <a-assets>
-      <a-asset-item id="m-0" src="./Assets/Models/Mario.glb"></a-asset-item>
+      <a-asset-item id="m-0" src="./Assets/Models/MarioDance.glb"></a-asset-item>
       <audio id="a-0" src="./Assets/Audio/Mario.mp3" preload="auto"></audio>
     </a-assets>
 
@@ -57,10 +58,10 @@
     <a-entity id="t0" mindar-image-target="targetIndex: 0">
       <a-gltf-model id="model-0"
         src="#m-0"
-        position="0 0 0"
+        position="0 -0.5 0"
         rotation="0 0 0"
-        scale="0.005 0.005 0.005"
-        animation-mixer
+        scale="0.1 0.1 0.1"
+        animation-mixer="loop: repeat; timeScale: 1"
       ></a-gltf-model>
     </a-entity>
   </a-scene>
@@ -148,6 +149,11 @@
       if (!a) return;
       a.currentTime = 0;
       try { await a.play(); } catch (e) {}
+    });
+    document.querySelector('#model-0').addEventListener('model-loaded', (e) => {
+      const obj = e.detail.model; // THREE.Object3D
+      const clips = obj.animations?.map(a => a.name) || [];
+      console.log('Clips en el GLB:', clips);
     });
   </script>
 </body>
